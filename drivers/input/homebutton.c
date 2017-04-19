@@ -5,7 +5,17 @@
 #include <linux/slab.h>
 #include <linux/fb.h>
 
-#define KEY_FPS_DOWN	614
+#define FPS_ONENAV_DOWN   614
+#define FPS_ONENAV_UP     615
+#define FPS_ONENAV_TAP    616
+#define FPS_ONENAV_HOLD   617
+#define FPS_ONENAV_YPLUS  618 // LEFT
+#define FPS_ONENAV_YMINUS 619 // RIGHT
+#define FPS_ONENAV_XPLUS  620 // DOWN
+#define FPS_ONENAV_XMINUS 621 // UP
+#define FPS_ONENAV_DBLTAP 622
+#define FPS_ONENAV_DBLTAP_BIS 112
+
 static DEFINE_MUTEX(hb_lock);
 
 struct homebutton_data {
@@ -14,20 +24,35 @@ struct homebutton_data {
 	struct work_struct hb_input_work;
 	struct notifier_block notif;
 	struct kobject *homebutton_kobj;
-	bool key_down;
+	bool key_press;
 	bool scr_suspended;
 	bool enable;
 	unsigned int key;
+	unsigned int key_left;
+	unsigned int key_right;
+	unsigned int key_hold;
+	unsigned int key_down;
+	unsigned int key_up;
+	unsigned int key_dbltap;
+	unsigned int current_key;
 } hb_data = {
 	.enable = true,
-	.key = KEY_HOME
+	.key = KEY_RESERVED,
+	.key_hold = KEY_RESERVED,
+	.key_left = KEY_RESERVED,
+	.key_right = KEY_RESERVED,
+	.key_down = KEY_RESERVED,
+	.key_up = KEY_RESERVED,
+	.key_dbltap = KEY_RESERVED,
+	.current_key = KEY_HOME
 };
 
 static void hb_input_callback(struct work_struct *unused) {
 	if (!mutex_trylock(&hb_lock))
 		return;
 
-	input_report_key(hb_data.hb_dev, hb_data.key, hb_data.key_down);
+	pr_err("Sendind %d key, key_pressed: %d", hb_data.current_key, hb_data.key_press);
+	input_report_key(hb_data.hb_dev, hb_data.current_key, hb_data.key_press);
 	input_sync(hb_data.hb_dev);
 
 	mutex_unlock(&hb_lock);
@@ -36,7 +61,8 @@ static void hb_input_callback(struct work_struct *unused) {
 }
 
 static int input_dev_filter(struct input_dev *dev) {
-	if (strstr(dev->name, "fpc1020")) {
+
+	if (strstr(dev->name, "uinput-fpc")) {
 		return 0;
 	} else {
 		return 1;
@@ -48,8 +74,9 @@ static int hb_input_connect(struct input_handler *handler,
 	int rc;
 	struct input_handle *handle;
 
-	if (input_dev_filter(dev))
+	if (input_dev_filter(dev)) {
 		return -ENODEV;
+	}
 
 	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
 	if (!handle)
@@ -60,12 +87,14 @@ static int hb_input_connect(struct input_handler *handler,
 	handle->name = "hb";
 
 	rc = input_register_handle(handle);
-	if (rc)
+	if (rc) {
 		goto err_input_register_handle;
+	}
 	
 	rc = input_open_device(handle);
-	if (rc)
+	if (rc) {
 		goto err_input_open_device;
+	}
 
 	return 0;
 
@@ -79,17 +108,47 @@ err_input_register_handle:
 static bool hb_input_filter(struct input_handle *handle, unsigned int type, 
 						unsigned int code, int value)
 {
-	if (type != EV_KEY)
+	if (type != EV_KEY) {
 		return false;
+	}
 
-	if (!hb_data.enable || hb_data.scr_suspended)
+	if (!hb_data.enable || hb_data.scr_suspended) {
+		pr_err("hb_data.enable: %d, scr_suspended: %d", hb_data.enable, hb_data.scr_suspended);
 		return false;
-
-	if (value == 1) {
-		if (code == KEY_FPS_DOWN)
-			hb_data.key_down = true;
-		else
-			hb_data.key_down = false;
+	}
+	
+	if (value == 1)
+		hb_data.key_press = true;
+	else
+		hb_data.key_press = false;
+		
+	switch (code) {
+		case FPS_ONENAV_TAP:
+			hb_data.current_key = hb_data.key;
+			break;
+		case FPS_ONENAV_HOLD:
+			hb_data.current_key = hb_data.key_hold;
+			break;
+		case FPS_ONENAV_YPLUS:
+			hb_data.current_key = hb_data.key_up;
+			break;
+		case FPS_ONENAV_YMINUS:
+			hb_data.current_key = hb_data.key_down;
+			break;
+		case FPS_ONENAV_XPLUS:
+			hb_data.current_key = hb_data.key_right;
+			break;
+		case FPS_ONENAV_XMINUS:
+			hb_data.current_key = hb_data.key_left;
+			break;
+		case FPS_ONENAV_DBLTAP_BIS:
+		case FPS_ONENAV_DBLTAP:
+			hb_data.current_key = hb_data.key_dbltap;
+			break;
+		case KEY_RESERVED:
+		default:
+			pr_err("default case");
+			return false;
 	}
 
 	schedule_work(&hb_data.hb_input_work);
@@ -195,6 +254,156 @@ static ssize_t key_store(struct device *dev,
 static DEVICE_ATTR(key, (S_IWUSR | S_IRUGO),
 	key_show, key_store);
 
+static ssize_t key_hold_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_hold);
+}
+
+static ssize_t key_hold_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_hold = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_hold, (S_IWUSR | S_IRUGO),
+	key_hold_show, key_hold_store);
+
+static ssize_t key_down_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_down);
+}
+
+static ssize_t key_down_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_down = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_down, (S_IWUSR | S_IRUGO),
+	key_down_show, key_down_store);
+
+static ssize_t key_up_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_up);
+}
+
+static ssize_t key_up_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_up = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_up, (S_IWUSR | S_IRUGO),
+	key_up_show, key_up_store);
+
+static ssize_t key_left_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_left);
+}
+
+static ssize_t key_left_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_left = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_left, (S_IWUSR | S_IRUGO),
+	key_left_show, key_left_store);
+
+static ssize_t key_right_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_right);
+}
+
+static ssize_t key_right_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_right = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_right, (S_IWUSR | S_IRUGO),
+	key_right_show, key_right_store);
+
+static ssize_t key_dbltap_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_dbltap);
+}
+
+static ssize_t key_dbltap_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_dbltap = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_dbltap, (S_IWUSR | S_IRUGO),
+	key_dbltap_show, key_dbltap_store);
+
 static int __init hb_init(void)
 {
 	int rc = 0;
@@ -206,6 +415,11 @@ static int __init hb_init(void)
 	}
 
 	input_set_capability(hb_data.hb_dev, EV_KEY, KEY_HOME);
+	input_set_capability(hb_data.hb_dev, EV_KEY, KEY_POWER);
+	input_set_capability(hb_data.hb_dev, EV_KEY, 580); // APP_SWITCH
+	input_set_capability(hb_data.hb_dev, EV_KEY, KEY_BACK);
+	input_set_capability(hb_data.hb_dev, EV_KEY, KEY_VOLUMEDOWN);
+	input_set_capability(hb_data.hb_dev, EV_KEY, KEY_VOLUMEUP);
 	set_bit(EV_KEY, hb_data.hb_dev->evbit);
 	set_bit(KEY_HOME, hb_data.hb_dev->keybit);
 	hb_data.hb_dev->name = "qwerty";
@@ -244,6 +458,30 @@ static int __init hb_init(void)
 		pr_err("%s: sysfs_create_file failed for homebutton enable\n", __func__);
 
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_hold.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_down.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_up.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_left.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_right.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_dbltap.attr);
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
 
