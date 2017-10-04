@@ -21,21 +21,30 @@ struct homebutton_data {
 	bool scr_suspended;
 	bool enable;
 	bool enable_off;
-	bool haptic;
 	unsigned int key;
 	unsigned int key_dbltap;
 	unsigned int key_left;
 	unsigned int key_right;
 	unsigned int key_hold;
+	unsigned int key_screenoff;
+	unsigned int key_screenoff_dbltap;
+	unsigned int key_screenoff_left;
+	unsigned int key_screenoff_right;
+	unsigned int key_screenoff_hold;
 	unsigned int current_key;
 } hb_data = {
 	.enable = false,
 	.enable_off = false,
-	.haptic = false,
 	.key = KEY_RESERVED,
-	.key_hold = KEY_RESERVED,
+	.key_dbltap = KEY_RESERVED,
 	.key_left = KEY_RESERVED,
 	.key_right = KEY_RESERVED,
+	.key_hold = KEY_RESERVED,
+	.key_screenoff = KEY_RESERVED,
+	.key_screenoff_dbltap = KEY_RESERVED,
+	.key_screenoff_left = KEY_RESERVED,
+	.key_screenoff_right = KEY_RESERVED,
+	.key_screenoff_hold = KEY_RESERVED,
 	.current_key = KEY_RESERVED
 };
 
@@ -207,33 +216,6 @@ static ssize_t hb_enable_store(struct device *dev,
 static DEVICE_ATTR(enable, (S_IWUSR | S_IRUGO),
 	hb_enable_show, hb_enable_store);
 
-static ssize_t hb_enable_off_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.enable_off);
-}
-
-static ssize_t hb_enable_off_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	int rc;
-	unsigned long input;
-
-	rc = kstrtoul(buf, 0, &input);
-	if (rc < 0)
-		return -EINVAL;
-
-	if (input < 0 || input > 1)
-		input = 0;
-
-	hb_data.enable_off = input;
-
-	return count;
-}
-
-static DEVICE_ATTR(enable_off, (S_IWUSR | S_IRUGO),
-	hb_enable_off_show, hb_enable_off_store);
-
 static ssize_t key_show(struct device *dev,
 		 struct device_attribute *attr, char *buf)
 {
@@ -356,13 +338,16 @@ static ssize_t key_dbltap_store(struct device *dev,
 	return count;
 }
 
-static ssize_t hb_haptic_show(struct device *dev,
+static DEVICE_ATTR(key_dbltap, (S_IWUSR | S_IRUGO),
+	key_dbltap_show, key_dbltap_store);
+
+static ssize_t hb_enable_off_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.haptic);
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.enable_off);
 }
 
-static ssize_t hb_haptic_store(struct device *dev,
+static ssize_t hb_enable_off_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int rc;
@@ -375,16 +360,138 @@ static ssize_t hb_haptic_store(struct device *dev,
 	if (input < 0 || input > 1)
 		input = 0;
 
-	hb_data.haptic = input;
+	hb_data.enable_off = input;
 
 	return count;
 }
 
-static DEVICE_ATTR(haptic, (S_IWUSR | S_IRUGO),
-	hb_haptic_show, hb_haptic_store);
+static DEVICE_ATTR(enable_off, (S_IWUSR | S_IRUGO),
+	hb_enable_off_show, hb_enable_off_store);
 
-static DEVICE_ATTR(key_dbltap, (S_IWUSR | S_IRUGO),
-	key_dbltap_show, key_dbltap_store);
+static ssize_t key_screenoff_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_screenoff);
+}
+
+static ssize_t key_screenoff_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_screenoff = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_screenoff, (S_IWUSR | S_IRUGO),
+	key_screenoff_show, key_screenoff_store);
+
+static ssize_t key_screenoff_hold_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_screenoff_hold);
+}
+
+static ssize_t key_screenoff_hold_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_screenoff_hold = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_screenoff_hold, (S_IWUSR | S_IRUGO),
+	key_screenoff_hold_show, key_screenoff_hold_store);
+
+static ssize_t key_screenoff_left_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_screenoff_left);
+}
+
+static ssize_t key_screenoff_left_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_screenoff_left = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_screenoff_left, (S_IWUSR | S_IRUGO),
+	key_screenoff_left_show, key_screenoff_left_store);
+
+static ssize_t key_screenoff_right_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_screenoff_right);
+}
+
+static ssize_t key_screenoff_right_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_screenoff_right = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_screenoff_right, (S_IWUSR | S_IRUGO),
+	key_screenoff_right_show, key_screenoff_right_store);
+
+static ssize_t key_screenoff_dbltap_show(struct device *dev,
+		 struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hb_data.key_screenoff_dbltap);
+}
+
+static ssize_t key_screenoff_dbltap_store(struct device *dev,
+		 struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long input;
+
+	ret = kstrtoul(buf, 0, &input);
+	if (ret < 0)
+		return -EINVAL;
+
+	set_bit(input, hb_data.hb_dev->keybit);
+	hb_data.key_screenoff_dbltap = input;
+
+	return count;
+}
+
+static DEVICE_ATTR(key_screenoff_dbltap, (S_IWUSR | S_IRUGO),
+	key_screenoff_dbltap_show, key_screenoff_dbltap_store);
 
 static int __init hb_init(void)
 {
@@ -456,13 +563,29 @@ static int __init hb_init(void)
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
 
-	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_haptic.attr);
-	if (rc)
-		pr_err("%s: sysfs_create_file failed for homebutton haptic key\n", __func__);
-
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_enable_off.attr);
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton screen off key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff_hold.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff_left.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff_right.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff_dbltap.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
 
 err_input_dev:
 	input_free_device(hb_data.hb_dev);
