@@ -18,6 +18,8 @@ struct homebutton_data {
 	struct kobject *homebutton_kobj;
 	int enable;
 	bool enable_off;
+	unsigned int haptic;
+	unsigned int haptic_off;
 	unsigned int key;
 	unsigned int key_dbltap;
 	unsigned int key_left;
@@ -32,6 +34,8 @@ struct homebutton_data {
 } hb_data = {
 	.enable = 0,
 	.enable_off = false,
+	.haptic = 0,
+	.haptic_off = 0,
 	.key = KEY_RESERVED,
 	.key_dbltap = KEY_RESERVED,
 	.key_left = KEY_RESERVED,
@@ -174,6 +178,29 @@ static ssize_t hb_enable_store(struct device *dev,
 
 static DEVICE_ATTR(enable, (S_IWUSR | S_IRUGO),
 	hb_enable_show, hb_enable_store);
+
+static ssize_t hb_haptic_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+
+	count += sprintf(buf, "%d\n", hb_data.haptic);
+
+	return count;
+}
+
+static ssize_t hb_haptic_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	sscanf(buf, "%d ", &hb_data.haptic);
+	if (hb_data.haptic < 0 || hb_data.haptic > 1)
+		hb_data.haptic = 0;
+		
+	return count;
+}
+
+static DEVICE_ATTR(haptic, (S_IWUSR | S_IRUGO),
+	hb_haptic_show, hb_haptic_store);
 
 static ssize_t key_show(struct device *dev,
 		 struct device_attribute *attr, char *buf)
@@ -326,6 +353,29 @@ static ssize_t hb_enable_off_store(struct device *dev,
 
 static DEVICE_ATTR(enable_off, (S_IWUSR | S_IRUGO),
 	hb_enable_off_show, hb_enable_off_store);
+
+static ssize_t hb_haptic_off_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+
+	count += sprintf(buf, "%d\n", hb_data.haptic_off);
+
+	return count;
+}
+
+static ssize_t hb_haptic_off_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	sscanf(buf, "%d ", &hb_data.haptic_off);
+	if (hb_data.haptic_off < 0 || hb_data.haptic_off > 1)
+		hb_data.haptic_off = 0;
+		
+	return count;
+}
+
+static DEVICE_ATTR(haptic_off, (S_IWUSR | S_IRUGO),
+	hb_haptic_off_show, hb_haptic_off_store);
 
 static ssize_t key_screenoff_show(struct device *dev,
 		 struct device_attribute *attr, char *buf)
@@ -496,6 +546,10 @@ static int __init hb_init(void)
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton enable\n", __func__);
 
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_haptic.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton haptic\n", __func__);
+
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key.attr);
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton key\n", __func__);
@@ -519,6 +573,10 @@ static int __init hb_init(void)
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_enable_off.attr);
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton screen off key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_haptic_off.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton haptic screen off key\n", __func__);
 
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff.attr);
 	if (rc)
