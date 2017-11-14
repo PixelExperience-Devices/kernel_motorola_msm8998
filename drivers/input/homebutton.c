@@ -20,6 +20,7 @@ struct homebutton_data {
 	bool enable_off;
 	unsigned int haptic;
 	unsigned int haptic_off;
+	unsigned int proximity_check_off;
 	unsigned int key;
 	unsigned int key_dbltap;
 	unsigned int key_left;
@@ -36,6 +37,7 @@ struct homebutton_data {
 	.enable_off = false,
 	.haptic = 0,
 	.haptic_off = 0,
+	.proximity_check_off = 0,
 	.key = KEY_RESERVED,
 	.key_dbltap = KEY_RESERVED,
 	.key_left = KEY_RESERVED,
@@ -377,6 +379,29 @@ static ssize_t hb_haptic_off_store(struct device *dev,
 static DEVICE_ATTR(haptic_off, (S_IWUSR | S_IRUGO),
 	hb_haptic_off_show, hb_haptic_off_store);
 
+static ssize_t hb_proximity_check_off_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	size_t count = 0;
+
+	count += sprintf(buf, "%d\n", hb_data.proximity_check_off);
+
+	return count;
+}
+
+static ssize_t hb_proximity_check_off_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	sscanf(buf, "%d ", &hb_data.proximity_check_off);
+	if (hb_data.proximity_check_off < 0 || hb_data.proximity_check_off > 1)
+		hb_data.proximity_check_off = 0;
+		
+	return count;
+}
+
+static DEVICE_ATTR(proximity_check_off, (S_IWUSR | S_IRUGO),
+	hb_proximity_check_off_show, hb_proximity_check_off_store);
+
 static ssize_t key_screenoff_show(struct device *dev,
 		 struct device_attribute *attr, char *buf)
 {
@@ -577,6 +602,10 @@ static int __init hb_init(void)
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_haptic_off.attr);
 	if (rc)
 		pr_err("%s: sysfs_create_file failed for homebutton haptic screen off key\n", __func__);
+
+	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_proximity_check_off.attr);
+	if (rc)
+		pr_err("%s: sysfs_create_file failed for homebutton proximity check screen off key\n", __func__);
 
 	rc = sysfs_create_file(hb_data.homebutton_kobj, &dev_attr_key_screenoff.attr);
 	if (rc)
