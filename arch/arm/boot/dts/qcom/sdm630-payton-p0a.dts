@@ -18,6 +18,10 @@
 
 / {
 	qcom,board-id = <0x41 0x80A0>;
+
+	chosen {
+		bootargs = "variant=p0a";
+	};
 };
 /* workaround, GPIO2 used as codec interrupt pin in this revison, to be revised
  * in the next hardware version because LPI interrupt cannot receive by AP

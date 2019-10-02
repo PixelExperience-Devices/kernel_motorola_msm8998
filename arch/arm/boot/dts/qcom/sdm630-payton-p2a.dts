@@ -18,6 +18,10 @@
 
 / {
         qcom,board-id = <0x41 0x82A0>,<0x42 0x82A0>;
+
+		chosen {
+			bootargs = "variant=p2a";
+		};
 };
 
 &i2c_2 { /* BLSP1 CAP SENSOR */
