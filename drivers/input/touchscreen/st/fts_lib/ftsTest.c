@@ -2309,15 +2309,16 @@ END:
 int readLine(char *data, char **line, int size, int *n)
 {
 	int i = 0;
+
 	if (size < 1)
 		return 1;
 
-		while (data[i] != '\n' && i < size) {
-			*(*line + i) = data[i];
-			i++;
-		}
-		*n = i+1;
-		*(*line + i) = '\0';
+	while (data[i] != '\n' && i < size) {
+		*(*line + i) = data[i];
+		i++;
+	}
+	*n = i+1;
+	*(*line + i) = '\0';
 
 	return OK;
 
