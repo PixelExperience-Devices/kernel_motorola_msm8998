@@ -3480,9 +3480,6 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 		status = hub_port_status(hub, port1, &portstatus, &portchange);
 		dev_dbg(&udev->dev, "%s: %d status %d ps 0x%x pc 0x%x\n",
 			__func__, k, status, portstatus, portchange);
-		/* TRSMRCY = 10 msec */
-		usleep_range(10000, 10500);
-
 		/* Some Devices Take longer to Wake
 		 * This will spin until a port change
 		 * or 150 ms has passed
@@ -3507,6 +3504,9 @@ int usb_port_resume(struct usb_device *udev, pm_message_t msg)
 				usb_clear_port_feature(hub->hdev, port1,
 						USB_PORT_FEAT_C_SUSPEND);
 		}
+
+		/* TRSMRCY = 10 msec */
+		msleep(10);
 	}
 
 	if (udev->persist_enabled && hub_is_superspeed(hub->hdev))
