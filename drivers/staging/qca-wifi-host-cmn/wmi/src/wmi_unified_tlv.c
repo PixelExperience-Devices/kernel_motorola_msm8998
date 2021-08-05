@@ -13234,6 +13234,10 @@ static QDF_STATUS extract_mgmt_rx_params_tlv(wmi_unified_t wmi_handle,
 		return QDF_STATUS_E_INVAL;
 	}
 
+	if (ev_hdr->buf_len > param_tlvs->num_bufp) {
+		WMI_LOGE("Rx mgmt frame length mismatch, discard it");
+		return QDF_STATUS_E_INVAL;
+	}
 
 	hdr->channel = ev_hdr->channel;
 	hdr->snr = ev_hdr->snr;
