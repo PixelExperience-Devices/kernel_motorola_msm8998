@@ -55,6 +55,7 @@
 #define WMA_RESUME_TIMEOUT                 6000
 #define MAX_MEM_CHUNKS                     32
 #define NAN_CLUSTER_ID_BYTES               4
+#define NDP_APP_INFO_LEN                   255
 
 #define WMA_CRASH_INJECT_TIMEOUT           5000
 

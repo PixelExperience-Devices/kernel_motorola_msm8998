@@ -720,6 +720,11 @@ static int wma_ndp_confirm_event_handler(void *handle, uint8_t *event_info,
 			WMA_LOGE(FL("malloc failed"));
 			return QDF_STATUS_E_NOMEM;
 		}
+
+		if (ndp_confirm.ndp_info.ndp_app_info_len > NDP_APP_INFO_LEN)
+			ndp_confirm.ndp_info.ndp_app_info_len =
+							NDP_APP_INFO_LEN;
+
 		qdf_mem_copy(&ndp_confirm.ndp_info.ndp_app_info,
 			     event->ndp_app_info,
 			     ndp_confirm.ndp_info.ndp_app_info_len);
