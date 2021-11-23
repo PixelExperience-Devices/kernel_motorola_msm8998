@@ -27,8 +27,8 @@ static const struct file_operations cmdline_proc_fops = {
 static int __init proc_cmdline_init(void)
 {
 
-        char *search = "skip_initramfs";
-        char *replace = "androidboot.force_normal_boot=1";
+	char *search = "skip_initramf";
+	char *replace = "androidboot.force_normal_boot=1 ";
 
 	char *offset_addr, *cmd = new_command_line;
 	size_t search_len, replace_len;
