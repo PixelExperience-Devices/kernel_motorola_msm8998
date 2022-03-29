@@ -1857,17 +1857,12 @@ int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data, int client)
 						&data->len, fb_num);
 			if (ret) {
 				pr_err("mdss_fb_get_phys_info() failed\n");
-				fdput(f);
-				memset(&f, 0, sizeof(struct fd));
 			}
 		} else {
 			pr_err("invalid FB_MAJOR\n");
-			fdput(f);
 			ret = -EINVAL;
 		}
 		data->srcp_f = f;
-		if (!ret)
-			goto done;
 	} else if (iclient) {
 		data->srcp_dma_buf = dma_buf_get(img->memory_id);
 			if (IS_ERR(data->srcp_dma_buf)) {
@@ -1905,7 +1900,6 @@ int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data, int client)
 		data->mapped = true;
 		data->skip_detach = false;
 	}
-done:
 	if (!ret && (img->offset < data->len)) {
 		data->addr += img->offset;
 		data->len -= img->offset;
